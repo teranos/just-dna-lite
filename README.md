@@ -12,7 +12,7 @@
 
 Upload your genome file, pick what you want to know, get results in minutes. Other annotation tools can take hours. just-dna-lite runs entirely on your machine — your data gets normalized, annotated, and reported while you're still making coffee. Nothing leaves your computer.
 
-The starting point here is that you have the right to look at your own genome without anyone filtering what you see. Consumer genomics tools like Nebula or Dante do show you a lot, but what they surface is ultimately a semi-arbitrary curatorial decision by their teams — interesting findings they picked, weighted toward things that are engaging or easy to explain. Clinical genomics is highly curated too, but for a different reason: it only shows findings where there's strong evidence and a clear path to action. This tool takes a different approach: you get access to everything — all modules, all 5,000+ PRS scores from the PGS Catalog, your complete variant table cross-referenced against Ensembl. What you do with that is your decision.
+The starting point here is that you have the right to look at your own genome without anyone filtering what you see. Under the new European Health Data Space (EHDS) regulation, this is increasingly recognized as a fundamental right—individuals must have immediate, free access to their digital health data. Consumer genomics tools like Nebula or Dante do show you a lot, but what they surface is ultimately a semi-arbitrary curatorial decision by their teams — interesting findings they picked, weighted toward things that are engaging or easy to explain. Clinical genomics is highly curated too, but for a different reason: it only shows findings where there's strong evidence and a clear path to action. This tool takes a different approach: you get access to everything — all modules, all 5,000+ PRS scores from the PGS Catalog, your complete variant table cross-referenced against Ensembl. What you do with that is your decision.
 
 ## What's inside
 
@@ -70,6 +70,8 @@ All outputs are Parquet files. Open them in Polars, Pandas, DuckDB, R, or anythi
 ## What the numbers actually mean
 
 Genomics has a gap between what sounds precise and what's actually known. Here's the short version before you start digging.
+
+*(Note: just-dna-lite is a bioinformatics research tool for personal self-exploration. It is not a medical device, diagnostic tool, or a substitute for professional medical advice. Always consult a healthcare provider or genetic counselor for clinical interpretation).*
 
 When a trait is described as "70% heritable," most people read that as "70% determined by genes." It doesn't mean that. Heritability is a population statistic — it measures how much of the variation *between people in a specific study* is associated with genetic differences. It changes depending on the environment. Height is around 80% heritable in well-nourished populations; that number drops significantly in populations with childhood malnutrition. The genes didn't change. The environment did. So heritability tells you something real, but not what most people think it tells you.
 
