@@ -64,6 +64,26 @@ uv run start
 
 Open the URL printed in the terminal (usually `http://localhost:3000`). Upload your VCF and start exploring.
 
+### macOS Apple Silicon: using Nix (optional)
+
+If you're on an Apple Silicon Mac (M1/M2/M3/M4) and run into architecture issues (e.g. Polars CPU warnings, wrong native bindings), the included [Nix flake](https://nix.dev/concepts/flakes) provides Python, Node.js, and uv at the correct architecture automatically.
+
+```bash
+# Install Nix (one-time, ~2 minutes)
+sh <(curl -L https://nixos.org/nix/install)
+# Restart your terminal, then enable flakes:
+mkdir -p ~/.config/nix
+echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
+# Enter the dev environment and start as usual
+cd just-dna-lite
+nix develop
+uv sync
+uv run start
+```
+
+Run `nix develop` each time you open a new terminal to work on this project, or use [direnv](https://direnv.net/) to activate it automatically (`echo "use flake" > .envrc && direnv allow`).
+
 To use the AI Module Creator, copy `.env.template` to `.env` and add your Gemini API key (free at [Google AI Studio](https://aistudio.google.com/apikey)). That's enough for both simple and team modes. Adding `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` brings in GPT and Claude Sonnet as additional Researcher agents in team mode (more cross-model diversity). Since the agents are built on the Agno framework, you can also configure local OpenAI-compatible models (like Ollama or vLLM) if you want to keep everything completely local. Everything else works without any API keys.
 
 ## How it works
