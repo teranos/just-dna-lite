@@ -1920,7 +1920,30 @@ def no_file_selected_message() -> rx.Component:
         ),
         rx.el.p(
             "Next-generation personal genomics platform — lite, fast, and OakVar-free.",
-            style={"fontSize": "1.2rem", "color": "#555", "fontStyle": "italic", "marginBottom": "40px"},
+            style={"fontSize": "1.2rem", "color": "#555", "fontStyle": "italic", "marginBottom": "20px"},
+        ),
+        
+        # RUO Warning Banner
+        rx.el.div(
+            rx.el.div(
+                fomantic_icon("exclamation-triangle", size=24, color="#db2828", style={"marginRight": "16px"}),
+                rx.el.div(
+                    rx.el.div(
+                        rx.el.strong("Research Use Only (RUO)"),
+                        style={"fontSize": "1.05rem", "color": "#db2828", "marginBottom": "4px"}
+                    ),
+                    rx.el.div(
+                        "This tool is for research, educational, and self-exploration purposes only. "
+                        "While we display all available data and scores, ",
+                        rx.el.strong("you must not use this tool for diagnostic or medical decisions. "),
+                        "Always consult a healthcare professional for clinical interpretation.",
+                        style={"fontSize": "0.9rem", "color": "#444", "lineHeight": "1.4"}
+                    ),
+                ),
+                style={"display": "flex", "alignItems": "center", "textAlign": "left"}
+            ),
+            class_name="ui red message",
+            style={"maxWidth": "900px", "margin": "0 auto 40px auto"}
         ),
         
         # Two-column layout for Info vs Workflow
