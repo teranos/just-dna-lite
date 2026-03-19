@@ -1945,10 +1945,6 @@ def no_file_selected_message() -> rx.Component:
                 "maxWidth": "800px", 
                 "margin": "0 auto 40px auto", 
                 "textAlign": "center",
-                "display": "flex",
-                "flexDirection": "column",
-                "alignItems": "center",
-                "padding": "16px 24px"
             }
         ),
         
@@ -1959,28 +1955,28 @@ def no_file_selected_message() -> rx.Component:
                 rx.el.h3("Core Philosophy", class_name="ui large header", style={"textAlign": "left", "marginBottom": "20px"}),
                 rx.el.div(
                     rx.el.div(
-                        fomantic_icon("database", size=20, color="#2185d0", style={"marginRight": "12px"}),
+                        fomantic_icon("lock", size=20, color="#2185d0", style={"marginRight": "12px"}),
                         rx.el.div(
-                            rx.el.strong("Data as first-class citizen"),
-                            rx.el.div("Software-Defined Assets with Dagster for automatic lineage tracking", style={"fontSize": "0.9rem", "color": "#666"}),
+                            rx.el.strong("Your data, your call"),
+                            rx.el.div("Runs entirely on your machine. Nothing leaves your computer.", style={"fontSize": "0.9rem", "color": "#666"}),
                             style={"flex": "1"}
                         ),
                         style={"display": "flex", "alignItems": "start", "marginBottom": "15px"}
                     ),
                     rx.el.div(
-                        fomantic_icon("zap", size=20, color="#fbbd08", style={"marginRight": "12px"}),
+                        fomantic_icon("eye", size=20, color="#fbbd08", style={"marginRight": "12px"}),
                         rx.el.div(
-                            rx.el.strong("Fast Engines"),
-                            rx.el.div("Polars (default) or DuckDB (streaming, low memory)", style={"fontSize": "0.9rem", "color": "#666"}),
+                            rx.el.strong("Unfiltered access"),
+                            rx.el.div("We display everything from the latest research, but nothing is clinically validated.", style={"fontSize": "0.9rem", "color": "#666"}),
                             style={"flex": "1"}
                         ),
                         style={"display": "flex", "alignItems": "start", "marginBottom": "15px"}
                     ),
                     rx.el.div(
-                        fomantic_icon("terminal", size=20, color="#21ba45", style={"marginRight": "12px"}),
+                        fomantic_icon("rocket", size=20, color="#21ba45", style={"marginRight": "12px"}),
                         rx.el.div(
-                            rx.el.strong("Pure Python Stack"),
-                            rx.el.div("Reflex for Web UI, no React/JS needed", style={"fontSize": "0.9rem", "color": "#666"}),
+                            rx.el.strong("Speed & Iteration"),
+                            rx.el.div("AI-powered module creation prioritizing rapid development over manual curation.", style={"fontSize": "0.9rem", "color": "#666"}),
                             style={"flex": "1"}
                         ),
                         style={"display": "flex", "alignItems": "start", "marginBottom": "15px"}
@@ -1989,7 +1985,7 @@ def no_file_selected_message() -> rx.Component:
                         fomantic_icon("file-text", size=20, color="#767676", style={"marginRight": "12px"}),
                         rx.el.div(
                             rx.el.strong("Parquet-native"),
-                            rx.el.div("VCF → annotated Parquet outputs", style={"fontSize": "0.9rem", "color": "#666"}),
+                            rx.el.div("Outputs are ready for Pandas, Polars, DuckDB, or R.", style={"fontSize": "0.9rem", "color": "#666"}),
                             style={"flex": "1"}
                         ),
                         style={"display": "flex", "alignItems": "start"}
