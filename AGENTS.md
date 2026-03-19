@@ -1001,8 +1001,9 @@ Key principles:
 - Avoid `subprocess` complexity for CLI commands; use uv workspace `[project.scripts]` instead.
 - Automatically create missing directories in code rather than expecting users to `mkdir`.
 - The tool does not calculate heritability; advise users to look up heritability independently and explain low penetrance (risk variants don't guarantee trait manifestation).
-- Output file names must reflect semantic content (e.g., `_ensembl_annotated.parquet`), not implementation details.
+- Output file names must reflect semantic content (e.g., `_ensembl_annotated.parquet`), not implementation details. Reports should be timestamped to avoid overwriting previous runs.
 - When fixing Reflex `dispatch is not a function` exceptions, remove the `.web` directory and restart the server to clear stale frontend caches.
+- When the user gives a minimal working example or pattern, wire it in directly instead of over-exploring alternatives.
 
 ## Learned Workspace Facts
 
@@ -1015,5 +1016,11 @@ Key principles:
 - `uv lock -U` updates lockfile versions but not `pyproject.toml` specifiers. Use it to pull new upstream versions for transitive dependencies (e.g., when `pgenlib` became optional in `just-prs`).
 - Only GRCh38 VCF files are fully supported (GRCh37, T2T, and microarray are planned).
 - Ensembl annotation assets must depend on `user_vcf_normalized`, not raw VCFs. The `ensembl_source.repo_id` in `modules.yaml` controls the Ensembl HF dataset.
-- `rx.icon()` (Lucide) icons often fail in this Reflex setup; use `fomantic_icon()` from `webui.components.layout` instead.
+- `rx.icon()` (Lucide) icons often fail in this Reflex setup; use `fomantic_icon()` from `webui.components.layout` instead. Fomantic icon names are space-separated (e.g. `arrow up`), not hyphenated Lucide-style.
 - Key docs references: `docs/SCIENCE_LITERACY.md` for interpretation guidance, and `docs/AI_MODULE_WALKTHROUGH.md` for AI module creation examples.
+- `module_spec.yaml` structure: module name lives under `module.name`, not a top-level `name` key.
+- AI-generated module logos (via NanoBanana/Gemini) produce ~60% whitespace; `_autocrop_whitespace()` in `module_creator.py` handles this with tolerance-based near-white detection. Prompts must request edge-to-edge filling.
+- Always load `.env` via `load_dotenv()` or equivalent before using `os.getenv` for config paths (`JUST_DNA_PIPELINES_CACHE_DIR`, `JUST_DNA_PIPELINES_OUTPUT_DIR`, etc.).
+- Backend API port is auto-resolved at startup; never hardcode port 8000. Use `rx.config.get_config().api_url` or the `backend_api_url` state var for download/report URLs.
+- Long synchronous work in Reflex event handlers (e.g. `set_lazyframe` with large parquets) holds the state lock and freezes the UI. Use `run_in_executor` for heavy operations.
+- Reflex `rx.upload` wrapper is a real layout participant; CSS on the inner button alone is insufficient. Use `display: contents` on the upload wrapper to avoid phantom width.

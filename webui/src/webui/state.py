@@ -1721,16 +1721,18 @@ class UploadState(LazyFrameGridMixin, rx.State):
         reports: list[dict] = []
         if reports_dir.exists():
             for f in reports_dir.glob("*.html"):
+                mtime = f.stat().st_mtime
+                mtime_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
                 reports.append({
                     "name": f.name,
                     "path": str(f),
                     "size_kb": round(f.stat().st_size / 1024, 1),
                     "sample_name": sample_name,
-                    "materialized_at": report_mat.get("materialized_at", ""),
-                    "needs_materialization": report_mat.get("needs_materialization", True),
+                    "materialized_at": mtime_str,
+                    "needs_materialization": False,
                 })
         
-        reports.sort(key=lambda x: x["name"])
+        reports.sort(key=lambda x: x["name"], reverse=True)
         self.report_files = reports
 
     def _fetch_output_materialization_info(self, partition_key: str) -> Dict[str, Dict[str, Any]]:

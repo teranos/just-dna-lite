@@ -5,6 +5,7 @@ Report assets depend on the corresponding module annotation assets
 and produce self-contained HTML reports that can be downloaded or shared.
 """
 
+from datetime import datetime
 from pathlib import Path
 
 from dagster import (
@@ -55,7 +56,7 @@ def user_longevity_report(
     4. Renders a self-contained HTML report with expandable variant details
 
     Output:
-        data/output/users/{partition_key}/reports/longevity_report.html
+        data/output/users/{partition_key}/reports/longevity_report_{timestamp}.html
     """
     logger = context.log
     partition_key = context.partition_key
@@ -85,7 +86,8 @@ def user_longevity_report(
         output_path = Path(config.output_path)
     else:
         output_dir = get_user_output_dir() / partition_key / "reports"
-        output_path = output_dir / "longevity_report.html"
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = output_dir / f"longevity_report_{ts}.html"
 
     # Get selected modules
     module_names = config.modules if config.modules else None
