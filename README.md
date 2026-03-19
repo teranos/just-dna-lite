@@ -31,7 +31,12 @@ Both modes output `module_spec.yaml` + `variants.csv` loaded into an editing slo
 
 ## Quick start
 
-You need a VCF file from whole genome (WGS) or whole exome (WES) sequencing aligned to GRCh38, and Python 3.13+. If you sequenced through [Nebula Genomics](https://nebula.org/), [Dante Labs](https://www.dantelabs.com/), [TruDiagnostic](https://trudiagnostic.com/), or a clinical lab, you should have a `.vcf` or `.vcf.gz` file. That's what you need. (23andMe and AncestryDNA produce microarray data, not VCFs. Microarray support is on the roadmap.)
+You need a VCF file from whole genome (WGS) or whole exome (WES) sequencing aligned to GRCh38, and Python 3.13+. If you sequenced through a commercial provider or a clinical lab, you should have a `.vcf` or `.vcf.gz` file. That's what you need. (23andMe and AncestryDNA produce microarray data, not VCFs. Microarray support is on the roadmap.)
+
+**Where to get your genome sequenced?**
+If you want to sequence your own genome (Whole Genome Sequencing / WGS), there are several commercial providers. As of early 2026, popular and accessible options include [DNA Complete](https://dnacomplete.com/) (formerly Nebula Genomics), [Dante Labs](https://www.dantelabs.com/), and [Sequencing.com](https://sequencing.com/). Make sure the provider allows you to download your raw `.vcf` or `.vcf.gz` file. *(Disclaimer: We provide these links only as examples and are in no way affiliated with any of these companies or services).*
+
+If you live in Romania, you should follow the **[ROGEN (Romanian Genomics) project](https://rogen.umfcd.ro/)**. It is a major national initiative sequencing 5,000 individuals to create a genomic map of the population, and you might be able to get recruited to have your genome sequenced for free.
 
 **Don't have your genome sequenced yet?**
 You can use any public genome to try out the tool. For example, some of our authors have open-sourced their genomes — you can download [Anton Kulaga's genome here](https://zenodo.org/records/18370498) and see what you discover! You can also find other public genomes on platforms like [Open Humans](https://www.openhumans.org/).
