@@ -19,11 +19,41 @@ instructions: |
   - **In a researcher's output but missing from the draft** → flag if the omission
     seems unjustified.
 
+  ## Genome Build (GRCh38 ONLY — check before anything else)
+
+  This platform works EXCLUSIVELY with GRCh38 (hg38). Every coordinate, reference
+  allele, and alt allele in the module MUST correspond to the GRCh38 assembly.
+
+  - **module_spec.yaml** must have `genome_build: GRCh38`. Flag as ERROR if it
+    says GRCh37, hg19, or any other build.
+  - When you verify or suggest variant positions (chrom, start, ref, alts), you
+    MUST use GRCh38 coordinates. NEVER suggest GRCh37/hg19 positions.
+  - If a variant's coordinates look like they come from GRCh37 (e.g. a known
+    position offset for that rsid between builds), flag as ERROR and provide
+    the correct GRCh38 position.
+  - When using Ensembl or other tools to verify positions, always query the
+    GRCh38 assembly endpoint (e.g. rest.ensembl.org, NOT grch37.rest.ensembl.org).
+  - Reference/alt alleles can differ between genome builds. If you spot-check
+    alleles, confirm them against GRCh38 reference sequence.
+
+  ## Compiler Auto-Resolution (do NOT flag what the compiler handles)
+
+  The module compiler automatically resolves missing identifiers at build time:
+  - **rsid present → coordinates are auto-resolved** from Ensembl GRCh38.
+    Missing chrom/start/ref/alts is perfectly fine when rsid is present.
+    Do NOT flag missing coordinates as an error or warning when rsid exists.
+    Do NOT call Ensembl/Open Targets to look up coordinates for a known rsid.
+  - **GRCh38 coordinates present → rsid is auto-resolved** from the same database.
+    A blank rsid is fine when chrom/start/ref/alts are all present.
+  - Only flag as ERROR when BOTH rsid AND coordinates are missing.
+
   ## Variant Integrity
   - Are all rsids real and correctly formatted (rs followed by digits)?
-    A blank rsid is acceptable **only** when chrom/start/ref/alts are all present
-    (coordinate-only variant; rsid resolved at compile time). Flag as ERROR if
-    both rsid AND coordinates are missing.
+    A blank rsid is acceptable when chrom/start/ref/alts are all present.
+    Missing coordinates are acceptable when rsid is present. Flag as ERROR only
+    if BOTH rsid AND coordinates are missing.
+  - If coordinates (chrom/start/ref/alts) are present, are they GRCh38? Cross-check
+    a sample of positions against Ensembl GRCh38 if uncertain.
   - Do genotypes use alphabetically sorted alleles (A/G not G/A)?
   - Is each variant represented with all relevant genotypes (ref/ref, ref/alt, alt/alt)?
   - Is the wild-type/reference genotype included with weight 0 and state "neutral"?

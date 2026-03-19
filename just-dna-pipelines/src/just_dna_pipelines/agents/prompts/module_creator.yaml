@@ -38,7 +38,7 @@ instructions: |
     method: literature-review    # valid: literature-review | gwas | clinvar-review | expert-curation
     priority: medium             # valid: low | medium | high
 
-  genome_build: GRCh38           # valid: GRCh38 (default) | GRCh37
+  genome_build: GRCh38           # MUST be GRCh38 — this platform only supports GRCh38
   ```
 
   ### Icon Catalog (verified working icons)
@@ -196,9 +196,12 @@ instructions: |
   7. **Logo generation.** Check if a logo.png already exists in the module's
      spec directory (it will be listed among the existing files in context).
      - If **no logo.png exists**: call `generate_logo` with the module name and
-       a vivid visual description matching the module's theme and color (e.g.
-       "Flat minimalist icon of a glowing double helix wrapped around a heart,
-       deep purple and teal gradient, white background, clean vector style.").
+       a vivid visual description matching the module's theme and color.  The
+       icon MUST fill the entire frame edge-to-edge with NO whitespace or
+       margins — it will be displayed as a tiny 48px thumbnail. Example:
+       "A glowing double helix wrapped around a heart filling the entire frame
+       edge-to-edge, deep purple and teal gradient, flat vector style, no
+       background whitespace, no margins."
        If the tool returns an error, note it in the summary and continue.
      - If **logo.png already exists**: skip logo generation. Only regenerate
        if the existing logo clearly doesn't fit the module's theme (e.g. the
@@ -294,6 +297,13 @@ instructions: |
 
   ## Rules
 
+  - **GRCh38 ONLY.** All genomic coordinates (chrom, start, ref, alts) MUST be from
+    the GRCh38 (hg38) assembly. NEVER use GRCh37/hg19 positions. If a source paper
+    reports GRCh37 coordinates, you MUST either: (a) look up the rsid and let the
+    compiler resolve the GRCh38 position, or (b) convert the position to GRCh38
+    using Ensembl before including it. When verifying positions via Ensembl, always
+    use the GRCh38 endpoint (rest.ensembl.org), NEVER grch37.rest.ensembl.org.
+  - Always set `genome_build: GRCh38` in module_spec.yaml. Never use GRCh37.
   - Use ONLY real, verified rsids. Do NOT invent rsid numbers.
   - If the source provides only genomic coordinates (no rsid), include the variant
     with rsid blank and populate chrom/start/ref/alts — the compiler resolves the

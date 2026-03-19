@@ -10,6 +10,7 @@ import zipfile
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from just_dna_pipelines.runtime import load_env
+from just_dna_pipelines.annotation.resources import get_user_output_dir
 
 from webui.pages.dashboard import dashboard_page
 from webui.pages.index import index_page
@@ -90,8 +91,11 @@ def check_hf_authentication() -> None:
 # Run authentication check before anything else
 # check_hf_authentication()
 
-# Get workspace root for file paths
+# Workspace root for non-user paths (generated modules, agent specs)
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
+
+# User output dir resolved from env var / workspace root (same logic as pipeline IO managers)
+USER_OUTPUT_DIR = get_user_output_dir()
 
 
 # ============================================================================
@@ -118,8 +122,8 @@ async def download_output_file(user_id: str, sample_name: str, filename: str) ->
     if not filename.endswith(".parquet"):
         raise HTTPException(status_code=400, detail="Only parquet files can be downloaded")
     
-    # Build the file path
-    file_path = WORKSPACE_ROOT / "data" / "output" / "users" / user_id / sample_name / "modules" / filename
+    # Build the file path using the same output dir as the pipeline
+    file_path = USER_OUTPUT_DIR / user_id / sample_name / "modules" / filename
     
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {filename}")
@@ -226,8 +230,8 @@ async def view_report_file(user_id: str, sample_name: str, filename: str) -> Fil
     if not filename.endswith(".html"):
         raise HTTPException(status_code=400, detail="Only HTML files can be viewed")
     
-    # Build the file path (reports are in reports/ subdirectory)
-    file_path = WORKSPACE_ROOT / "data" / "output" / "users" / user_id / sample_name / "reports" / filename
+    # Build the file path using the same output dir as the pipeline
+    file_path = USER_OUTPUT_DIR / user_id / sample_name / "reports" / filename
     
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Report not found: {filename}")
@@ -240,6 +244,33 @@ async def view_report_file(user_id: str, sample_name: str, filename: str) -> Fil
         path=str(file_path),
         media_type="text/html",
     )
+
+
+@api.get("/api/module-logo/{module_name}")
+async def serve_module_logo(module_name: str) -> FileResponse:
+    """Serve a logo image for a local (non-HF) annotation module."""
+    if ".." in module_name or "/" in module_name:
+        raise HTTPException(status_code=400, detail="Invalid module name")
+
+    from just_dna_pipelines.annotation.hf_modules import MODULE_INFOS
+
+    info = MODULE_INFOS.get(module_name)
+    if not info or not info.logo_url:
+        raise HTTPException(status_code=404, detail=f"No logo for module: {module_name}")
+
+    logo_path_str = info.logo_url
+    if logo_path_str.startswith("file://"):
+        logo_path_str = logo_path_str[len("file://"):]
+
+    logo_path = Path(logo_path_str)
+    if not logo_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Logo file not found: {module_name}")
+
+    suffix = logo_path.suffix.lower()
+    media_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+    media_type = media_types.get(suffix, "application/octet-stream")
+
+    return FileResponse(path=str(logo_path), media_type=media_type)
 
 
 # ============================================================================

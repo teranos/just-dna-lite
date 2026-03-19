@@ -708,10 +708,14 @@ class UploadState(LazyFrameGridMixin, rx.State):
         """Re-read MODULE_INFOS globals and update UI state vars."""
         MODULE_METADATA.clear()
         MODULE_METADATA.update(build_module_metadata_dict(list(MODULE_INFOS.keys())))
+        old_available = set(self.available_modules)
         self.available_modules = sorted(list(MODULE_INFOS.keys()))
-        self.selected_modules = [
-            m for m in self.selected_modules if m in self.available_modules
-        ]
+        new_available = set(self.available_modules)
+        # Keep existing selections (removing modules no longer available)
+        kept = [m for m in self.selected_modules if m in new_available]
+        # Auto-select newly discovered modules
+        newly_added = sorted(new_available - old_available)
+        self.selected_modules = kept + [m for m in newly_added if m not in kept]
 
     def refresh_module_registry_state(self):
         """Public event: re-sync UI state from the module globals.
@@ -1614,7 +1618,14 @@ class UploadState(LazyFrameGridMixin, rx.State):
             file_runs.sort(key=lambda x: x.get("started_at") or "", reverse=True)
             latest_run = file_runs[0]
             if latest_run.get("modules"):
-                self.selected_modules = latest_run["modules"].copy()
+                prev_modules = latest_run["modules"]
+                available = set(self.available_modules)
+                # Keep old selections that are still available
+                restored = [m for m in prev_modules if m in available]
+                # Auto-select modules discovered after the previous run
+                prev_set = set(prev_modules)
+                new_modules = sorted(available - prev_set)
+                self.selected_modules = restored + new_modules
         
         # Expand all sections by default when selecting a file
         self.vcf_preview_expanded = True
@@ -1963,8 +1974,11 @@ class UploadState(LazyFrameGridMixin, rx.State):
             info = MODULE_INFOS.get(module_name)
             browsable_logo_url = ""
             if info and info.logo_url:
-                hf_path = info.logo_url.replace("hf://", "")
-                browsable_logo_url = f"https://huggingface.co/{hf_path.replace(info.repo_id, info.repo_id + '/resolve/main', 1)}"
+                if info.logo_url.startswith("hf://"):
+                    hf_path = info.logo_url.replace("hf://", "")
+                    browsable_logo_url = f"https://huggingface.co/{hf_path.replace(info.repo_id, info.repo_id + '/resolve/main', 1)}"
+                elif info.logo_url.startswith("file://") or info.logo_url.startswith("/"):
+                    browsable_logo_url = f"{self.backend_api_url}/api/module-logo/{module_name}"
             result.append({
                 "name": module_name,
                 "title": meta.get("title", module_name),

@@ -57,7 +57,7 @@ instructions: |
     method: literature-review    # valid: literature-review | gwas | clinvar-review | expert-curation
     priority: medium             # valid: low | medium | high
 
-  genome_build: GRCh38           # valid: GRCh38 (default) | GRCh37
+  genome_build: GRCh38           # MUST be GRCh38 — this platform only supports GRCh38
   ```
 
   ### Icon Catalog (verified working icons)
@@ -222,10 +222,13 @@ instructions: |
        spec directory (it will be listed among the existing files in context).
        - If **no logo.png exists**: call `generate_logo` with the module name and
          a vivid visual description that reflects the module's health/genetics
-         theme, dominant color, and key symbolism (e.g. "Flat minimalist icon of
-         a glowing double helix wrapped around a heart, deep purple and teal
-         gradient, white background, clean vector style."). If the tool returns
-         an error, note it in the summary and continue.
+         theme, dominant color, and key symbolism.  The icon MUST fill the
+         entire frame edge-to-edge with NO whitespace or margins — it will be
+         displayed as a tiny 48px thumbnail. Example: "A glowing double helix
+         wrapped around a heart filling the entire frame edge-to-edge, deep
+         purple and teal gradient, flat vector style, no background whitespace,
+         no margins." If the tool returns an error, note it in the summary
+         and continue.
        - If **logo.png already exists**: skip logo generation. Only regenerate
          if the existing logo clearly doesn't fit the module's theme (e.g. the
          module topic changed drastically).
@@ -322,6 +325,13 @@ instructions: |
 
   ## Rules
 
+  - **GRCh38 ONLY.** All genomic coordinates MUST be GRCh38. Never include GRCh37/hg19
+    positions. If a researcher reports GRCh37 coordinates, discard them and keep only
+    the rsid — the compiler resolves GRCh38 coordinates automatically.
+  - **Compiler auto-resolution — do NOT duplicate its work.** The compiler resolves
+    rsid → GRCh38 coordinates and GRCh38 coordinates → rsid automatically at build
+    time. You only need ONE of {rsid} or {GRCh38 coordinates} per variant. Do NOT
+    instruct researchers to look up coordinates for a known rsid or vice versa.
   - Use ONLY real, verified rsids. Do NOT invent rsid numbers.
   - If the source provides only genomic coordinates (no rsid), include the variant
     with rsid blank and populate chrom/start/ref/alts — the compiler resolves the

@@ -414,6 +414,43 @@ def _build_reviewer(
 # Shared tool builder (used by both team PI and solo agent)
 # ---------------------------------------------------------------------------
 
+def _autocrop_whitespace(image_bytes: bytes, padding_frac: float = 0.05, tolerance: int = 20) -> bytes:
+    """Trim near-white border around logo content and re-export as PNG.
+
+    Uses a per-channel tolerance (default 20) to handle off-white backgrounds
+    common in AI-generated images.  Adds a small relative padding around the
+    detected content, crops, and returns re-encoded PNG bytes.  Returns the
+    original bytes unchanged if no trimmable border is found.
+    """
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    arr = np.asarray(img)
+
+    mask = np.any(arr < (255 - tolerance), axis=2)
+    if not mask.any():
+        return image_bytes
+
+    rows = np.any(mask, axis=1)
+    cols = np.any(mask, axis=0)
+    y0, y1 = int(np.argmax(rows)), int(arr.shape[0] - np.argmax(rows[::-1]))
+    x0, x1 = int(np.argmax(cols)), int(arr.shape[1] - np.argmax(cols[::-1]))
+
+    pad = int(max(arr.shape[:2]) * padding_frac)
+    x0 = max(x0 - pad, 0)
+    y0 = max(y0 - pad, 0)
+    x1 = min(x1 + pad, arr.shape[1])
+    y1 = min(y1 + pad, arr.shape[0])
+
+    cropped = img.crop((x0, y0, x1, y1))
+    buf = io.BytesIO()
+    cropped.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _generate_logo_image(module_name: str, prompt: str, output_dir: Path, api_key: str) -> str:
     """Generate a module logo via Gemini native image generation (NanoBanana)."""
     from agno.tools.nano_banana import NanoBananaTools
@@ -427,9 +464,12 @@ def _generate_logo_image(module_name: str, prompt: str, output_dir: Path, api_ke
     if not (result and result.images and result.images[0].content):
         return f"Logo generation returned no image: {getattr(result, 'content', '')}"
 
+    raw_bytes = result.images[0].content
+    cropped_bytes = _autocrop_whitespace(raw_bytes)
+
     logo_path = output_dir / module_name / "logo.png"
     logo_path.parent.mkdir(parents=True, exist_ok=True)
-    logo_path.write_bytes(result.images[0].content)
+    logo_path.write_bytes(cropped_bytes)
     return f"Logo saved: {module_name}/logo.png"
 
 
@@ -507,14 +547,18 @@ def _build_pi_tools(output_dir: Path, api_key: str, current_version: int = 0) ->
         """Generate a square logo image for the module using Gemini image generation.
 
         The logo is saved as logo.png inside the module's spec directory.
+        Whitespace around the icon is auto-cropped.
         Call this after write_module_md as the final step.
 
         Args:
             module_name: Machine name of the module (same as in module_spec.yaml).
-            prompt: Visual description for the logo — include style, dominant colors,
-                    symbolic elements, and the module's health/genetics theme.
-                    Example: "Minimalist flat icon of a DNA helix intertwined with a heart,
-                    deep purple gradient, white background, clean vector style."
+            prompt: Visual description for the logo. The icon must FILL THE ENTIRE
+                    FRAME edge-to-edge with NO surrounding whitespace or margins.
+                    Include style, dominant colors, symbolic elements, and the
+                    module's health/genetics theme.
+                    Example: "A DNA helix intertwined with a heart filling the entire
+                    frame edge-to-edge, deep purple and teal gradient, flat vector style,
+                    no background whitespace."
         """
         return _generate_logo_image(module_name, prompt, output_dir, api_key)
 

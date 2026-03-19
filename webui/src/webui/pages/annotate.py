@@ -712,23 +712,23 @@ def fomantic_checkbox(checked: rx.Var[bool]) -> rx.Component:
 
 def module_logo_or_icon(module: rx.Var[dict]) -> rx.Component:
     """
-    Show the module's HF logo image if available, otherwise fall back to the static icon.
-    Logo images are served directly from HuggingFace.
+    Show the module's logo image if available, otherwise fall back to the static icon.
+    HF logos are served from HuggingFace CDN, local logos via /api/module-logo/.
     """
     return rx.cond(
         module["logo_url"].to(str) != "",
-        # Logo image from HuggingFace
         rx.el.img(
             src=module["logo_url"].to(str),
             alt=module["name"].to(str),
             style={
+                "position": "absolute",
+                "inset": "0",
                 "width": "100%",
                 "height": "100%",
-                "objectFit": "cover",
+                "objectFit": "contain",
                 "borderRadius": "4px",
             },
         ),
-        # Fallback to static icon
         module_icon(module["name"]),
     )
 
@@ -751,6 +751,7 @@ def module_card(module: rx.Var[dict]) -> rx.Component:
                 style={
                     "width": "48px",
                     "height": "48px",
+                    "position": "relative",
                     "backgroundColor": rx.cond(
                         module["logo_url"].to(str) != "",
                         "transparent",
