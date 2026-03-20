@@ -3211,32 +3211,44 @@ class AgentState(rx.State):
             f"Module **{module_name}** loaded into editing slot (v{self.slot_version}).",
         )
 
+    @rx.event(background=True)
     async def add_slot_module(self) -> None:
-        """Register the editing slot as a custom module."""
-        if not self._slot_spec_dir:
-            return
-        self.slot_adding = True
-        yield
+        """Register the editing slot as a custom module.
 
-        result = register_custom_module(Path(self._slot_spec_dir))
-        self.slot_adding = False
+        Runs as a background task so the long-running Ensembl resolution
+        doesn't block the UI.  Uses get_state(UploadState) to refresh
+        the module list directly instead of a cross-state yield which
+        is unreliable after long blocking calls.
+        """
+        async with self:
+            if not self._slot_spec_dir:
+                return
+            spec_dir = self._slot_spec_dir
+            self.slot_adding = True
+
+        result = register_custom_module(Path(spec_dir))
+
+        async with self:
+            self.slot_adding = False
+            if result.success:
+                stats = result.stats or {}
+                name = stats.get("module_name", self.slot_module_name)
+                variant_count = stats.get("weights_rows", 0)
+                self._add_chat_message(
+                    "agent",
+                    f"Module **{name}** registered successfully! "
+                    f"({variant_count} variants) — now available for annotation.",
+                )
+            else:
+                self._add_chat_message(
+                    "agent",
+                    f"Registration failed: {'; '.join(result.errors[:3])}",
+                )
 
         if result.success:
-            stats = result.stats or {}
-            name = stats.get("module_name", self.slot_module_name)
-            variant_count = stats.get("weights_rows", 0)
-            self._add_chat_message(
-                "agent",
-                f"Module **{name}** registered successfully! "
-                f"({variant_count} variants) — now available for annotation.",
-            )
-            yield UploadState.refresh_module_registry_state()
-        else:
-            self._add_chat_message(
-                "agent",
-                f"Registration failed: {'; '.join(result.errors[:3])}",
-            )
-        yield
+            upload_state = await self.get_state(UploadState)
+            async with upload_state:
+                upload_state._refresh_module_ui_state()
 
     def clear_slot(self) -> None:
         """Empty the editing slot."""
