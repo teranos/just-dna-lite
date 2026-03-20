@@ -857,6 +857,10 @@ class UploadState(LazyFrameGridMixin, rx.State):
     active_run_id: str = ""
     run_logs: List[str] = []
     polling_active: bool = False
+    # When set, poll_run_status will search for the real run created by execute_in_process
+    _inproc_discover_partition: str = ""
+    _inproc_discover_since: float = 0.0
+    _inproc_original_run_id: str = ""
     
     # Tracking for the UI button state
     last_run_success: bool = False
@@ -2026,6 +2030,16 @@ class UploadState(LazyFrameGridMixin, rx.State):
         except Exception as e:
             return (False, str(e))
 
+    def _swap_run_id(self, old_id: str, new_id: str) -> None:
+        """Replace a placeholder run_id with the real one in the runs list."""
+        updated_runs = []
+        for r in self.runs:
+            if r["run_id"] == old_id:
+                r["run_id"] = new_id
+                r["dagster_url"] = f"{get_dagster_web_url()}/runs/{new_id}"
+            updated_runs.append(r)
+        self.runs = updated_runs
+
     def _execute_inproc_with_state_update(
         self, 
         instance: DagsterInstance, 
@@ -2044,56 +2058,52 @@ class UploadState(LazyFrameGridMixin, rx.State):
         """
         actual_run_id = None
         try:
-            # Execute synchronously (caller handles threading)
             result = self._execute_job_in_process(
                 instance, job_name, run_config, partition_key
             )
             
-            # Get actual run ID from execute_in_process result
             actual_run_id = result.run_id
-            
-            # Track this as an active in-process run (for SIGTERM cleanup)
             UploadState._active_inproc_runs[actual_run_id] = partition_key
             
             self._add_log(f"Job completed via in-process execution with run ID: {actual_run_id}")
             
-            # Update the run info with actual run ID and final status
+            # Clear discovery state (poller may or may not have found it already)
+            self._inproc_discover_partition = ""
+            self._inproc_discover_since = 0.0
+            self._inproc_original_run_id = ""
+            
+            # Final update with real run ID and terminal status
+            self._swap_run_id(original_run_id, actual_run_id)
             updated_runs = []
             for r in self.runs:
-                if r["run_id"] == original_run_id:
-                    r["run_id"] = actual_run_id
+                if r["run_id"] == actual_run_id:
                     r["status"] = "SUCCESS" if result.success else "FAILURE"
                     r["ended_at"] = datetime.now().isoformat()
-                    r["dagster_url"] = f"{get_dagster_web_url()}/runs/{actual_run_id}"
                     if not result.success:
                         r["error"] = "Job failed - check Dagster UI for details"
-                    # Find output path if successful
                     if result.success:
-                        root = Path(__file__).resolve().parents[3]
                         output_dir = get_user_output_dir() / self.safe_user_id / sample_name / "modules"
                         if output_dir.exists():
                             r["output_path"] = str(output_dir)
                 updated_runs.append(r)
             self.runs = updated_runs
             
-            # Reset state - this will trigger UI reactivity
             self.running = False
             self.polling_active = False
             self.last_run_success = result.success
-            
-            # Refresh output files so UI shows them immediately
             self._load_output_files_sync()
             
         except Exception as e:
             error_message = str(e)
             self._add_log(f"In-process execution failed: {error_message}")
             
-            # Reset state and mark as failure
+            self._inproc_discover_partition = ""
+            self._inproc_discover_since = 0.0
+            self._inproc_original_run_id = ""
             self.running = False
             self.polling_active = False
             self.last_run_success = False
             
-            # Update run status in history to FAILURE
             updated_runs = []
             for r in self.runs:
                 if r["run_id"] == original_run_id:
@@ -2103,7 +2113,6 @@ class UploadState(LazyFrameGridMixin, rx.State):
                 updated_runs.append(r)
             self.runs = updated_runs
         finally:
-            # Clean up tracker
             if actual_run_id and actual_run_id in UploadState._active_inproc_runs:
                 del UploadState._active_inproc_runs[actual_run_id]
 
@@ -2271,20 +2280,21 @@ class UploadState(LazyFrameGridMixin, rx.State):
             yield rx.toast.info(f"Annotation started for {sample_name}")
         else:
             # Daemon submission failed - fall back to in-process execution
-            # Launch as background task to keep UI responsive
             self._add_log(f"Daemon submission failed: {daemon_error}")
             self._add_log("Starting in-process execution (this will take a few minutes)...")
             yield rx.toast.info(f"Running in-process for {sample_name} - please wait...")
             
-            # Delete the dummy run since execute_in_process will create a new one
-            # This prevents the poller from checking a stale NOT_STARTED run
+            # Delete the dummy run — execute_in_process will create a real one.
             instance.delete_run(run_id)
-            self._add_log(f"Deleted dummy run {run_id}, execute_in_process will create a new run")
             
-            # Disable polling - execute_in_process creates a new run ID that we'll track manually
-            self.polling_active = False
+            # Tell the poller to discover the real run ID by partition key + timestamp.
+            # poll_run_status (a safe Reflex event handler) will query Dagster for
+            # recent runs matching this partition and swap in the real run_id.
+            self._inproc_discover_partition = partition_key
+            self._inproc_discover_since = time.time()
+            self._inproc_original_run_id = run_id
             
-            # Update status to RUNNING
+            # Update status to RUNNING, keep polling active for discovery
             updated_runs = []
             for r in self.runs:
                 if r["run_id"] == run_id:
@@ -2313,15 +2323,52 @@ class UploadState(LazyFrameGridMixin, rx.State):
         timestamp string. We accept it as ``_value`` but don't use it.
         Must return (not yield) EventSpec so Reflex's frontend dispatcher
         can handle the result correctly.
+        
+        When ``_inproc_discover_partition`` is set, the active_run_id points to
+        a deleted placeholder. We search all recent Dagster runs (any status)
+        matching the partition key and created after ``_inproc_discover_since``
+        to discover the real run created by execute_in_process.
         """
-        if not self.active_run_id or not self.polling_active:
-            return
-
-        # Don't poll for temporary IDs
-        if str(self.active_run_id).startswith("running-"):
+        if not self.polling_active:
             return
 
         instance = get_dagster_instance()
+
+        # --- In-process run discovery mode ---
+        if self._inproc_discover_partition:
+            # The executor may have already finished and cleared discovery vars
+            # or set a terminal status. Check the current run entry first.
+            current_entry = next(
+                (r for r in self.runs if r["run_id"] == self._inproc_original_run_id), None
+            )
+            if current_entry and current_entry.get("status") in ("SUCCESS", "FAILURE", "CANCELED"):
+                self._inproc_discover_partition = ""
+                self._inproc_discover_since = 0.0
+                self._inproc_original_run_id = ""
+                return
+
+            records = instance.get_run_records(limit=20)
+            for record in records:
+                run = record.dagster_run
+                if (
+                    run.tags.get("dagster/partition") == self._inproc_discover_partition
+                    and run.tags.get("source") == "webui"
+                    and run.run_id != self._inproc_original_run_id
+                    and record.create_timestamp.timestamp() >= self._inproc_discover_since - 5
+                ):
+                    self._add_log(f"Discovered in-process run: {run.run_id}")
+                    self._swap_run_id(self._inproc_original_run_id, run.run_id)
+                    self.active_run_id = run.run_id
+                    self._inproc_discover_partition = ""
+                    self._inproc_discover_since = 0.0
+                    self._inproc_original_run_id = ""
+                    break
+            else:
+                return
+
+        if not self.active_run_id:
+            return
+
         run = instance.get_run_by_id(self.active_run_id)
 
         if not run:
@@ -2337,10 +2384,8 @@ class UploadState(LazyFrameGridMixin, rx.State):
                 r["status"] = status_str
                 if run.status in (DagsterRunStatus.SUCCESS, DagsterRunStatus.FAILURE, DagsterRunStatus.CANCELED):
                     r["ended_at"] = datetime.now().isoformat()
-                    # Find output path
                     if run.status == DagsterRunStatus.SUCCESS:
                         sample_name = r.get("sample_name", "")
-                        root = Path(__file__).resolve().parents[3]
                         output_dir = get_user_output_dir() / self.safe_user_id / sample_name / "modules"
                         if output_dir.exists():
                             r["output_path"] = str(output_dir)
@@ -2355,7 +2400,6 @@ class UploadState(LazyFrameGridMixin, rx.State):
             self.polling_active = False
             self.running = False
             self.last_run_success = (run.status == DagsterRunStatus.SUCCESS)
-            # Reload output files so the UI shows them immediately
             self._load_output_files_sync()
             if run.status == DagsterRunStatus.SUCCESS:
                 return rx.toast.success("Annotation completed successfully!")
