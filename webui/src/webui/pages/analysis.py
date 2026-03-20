@@ -5,7 +5,7 @@ import reflex as rx
 from webui.components.layout import template, fomantic_icon
 
 
-@rx.page(route="/analysis")
+@rx.page(route="/analysis", title="Analysis | Just DNA Lite")
 def analysis_page() -> rx.Component:
     """Analysis page using Fomantic UI styling."""
     return template(

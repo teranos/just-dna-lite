@@ -1526,8 +1526,13 @@ class UploadState(LazyFrameGridMixin, rx.State):
 
     @rx.var
     def backend_api_url(self) -> str:
-        """Get the backend API URL for downloads (uses auto-resolved backend port)."""
-        return rx.config.get_config().api_url
+        """Get the backend API URL prefix for downloads/reports.
+        
+        Returns empty string so URLs are relative (e.g. /api/report/...).
+        The browser resolves them against the current origin, which works
+        both on localhost and behind a reverse proxy in production.
+        """
+        return ""
 
     @rx.var
     def current_subject_id(self) -> str:
@@ -3010,8 +3015,7 @@ class AgentState(rx.State):
         """URL to download the slot spec as a zip (version appended to filename)."""
         if not self._slot_spec_dir or not self.slot_module_name:
             return ""
-        api_url = rx.config.get_config().api_url
-        return f"{api_url}/api/agent-spec-zip/{self.slot_module_name}?v={self.slot_version}"
+        return f"/api/agent-spec-zip/{self.slot_module_name}?v={self.slot_version}"
 
     @rx.var
     def slot_display_name(self) -> str:
@@ -3033,7 +3037,6 @@ class AgentState(rx.State):
         module_dir = GENERATED_MODULES_DIR / self.slot_module_name
         if not module_dir.exists():
             return []
-        api_url = rx.config.get_config().api_url
         name = self.slot_module_name
         logs = []
         for vdir in sorted(module_dir.iterdir()):
@@ -3043,7 +3046,7 @@ class AgentState(rx.State):
                 if f.is_file() and f.suffix == ".log":
                     logs.append({
                         "name": f.name,
-                        "url": f"{api_url}/api/agent-log/{name}/{vdir.name}/{f.name}",
+                        "url": f"/api/agent-log/{name}/{vdir.name}/{f.name}",
                     })
         return logs
 

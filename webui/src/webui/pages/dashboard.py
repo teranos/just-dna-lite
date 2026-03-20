@@ -249,7 +249,7 @@ def dagster_section() -> rx.Component:
     )
 
 
-@rx.page(route="/dashboard", on_load=UploadState.on_load)
+@rx.page(route="/dashboard", title="Dashboard | Just DNA Lite", on_load=UploadState.on_load)
 def dashboard_page() -> rx.Component:
     """Dashboard page with Fomantic UI layout."""
     return template(

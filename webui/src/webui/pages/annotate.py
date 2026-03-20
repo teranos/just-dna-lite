@@ -2216,7 +2216,7 @@ def polling_interval() -> rx.Component:
 # MAIN PAGE
 # ============================================================================
 
-@rx.page(route="/annotate", on_load=UploadState.on_load)
+@rx.page(route="/annotate", title="Annotate | Just DNA Lite", on_load=UploadState.on_load)
 def annotate_page() -> rx.Component:
     """Annotation page with two-panel run-centric layout."""
     return template(

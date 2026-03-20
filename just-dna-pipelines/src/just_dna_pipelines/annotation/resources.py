@@ -21,8 +21,9 @@ def get_workspace_root() -> Path:
 
     Resolution order:
     1. ``JUST_DNA_PIPELINES_ROOT`` environment variable (explicit override)
-    2. Walk up from this file until we find the workspace-level
-       ``pyproject.toml`` that contains ``[tool.uv.workspace]``.
+    2. Walk up from CWD until we find a ``pyproject.toml`` with ``[tool.uv.workspace]``.
+    3. Walk up from this file (works in editable installs / dev mode).
+    4. Fallback: CWD itself (prod: the app is always started from the project root).
 
     The result is cached so the filesystem walk only happens once.
     """
@@ -30,17 +31,28 @@ def get_workspace_root() -> Path:
     if env_root:
         return Path(env_root).resolve()
 
-    # Walk upward from this file (annotation/resources.py)
-    current = Path(__file__).resolve().parent
-    for parent in [current] + list(current.parents):
-        candidate = parent / "pyproject.toml"
-        if candidate.exists():
-            text = candidate.read_text(encoding="utf-8")
-            if "[tool.uv.workspace]" in text:
-                return parent
-    # Fallback: 5 levels up from annotation/resources.py
-    # just-dna-pipelines/src/just_dna_pipelines/annotation/resources.py
-    return Path(__file__).resolve().parents[4]
+    def _find_workspace_root(start: Path) -> Path | None:
+        for parent in [start] + list(start.parents):
+            candidate = parent / "pyproject.toml"
+            if candidate.exists():
+                text = candidate.read_text(encoding="utf-8")
+                if "[tool.uv.workspace]" in text:
+                    return parent
+        return None
+
+    # Try CWD first (reliable when app is launched from project root, even with
+    # non-editable installs where __file__ points into site-packages)
+    cwd_root = _find_workspace_root(Path.cwd().resolve())
+    if cwd_root:
+        return cwd_root
+
+    # Try walking up from this source file (works in editable/dev installs)
+    file_root = _find_workspace_root(Path(__file__).resolve().parent)
+    if file_root:
+        return file_root
+
+    # Last resort: assume CWD is the project root
+    return Path.cwd().resolve()
 
 
 def get_default_ensembl_cache_dir() -> Path:

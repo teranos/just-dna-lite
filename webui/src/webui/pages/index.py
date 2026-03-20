@@ -16,7 +16,7 @@ from webui.pages.annotate import (
 )
 
 
-@rx.page(route="/", on_load=UploadState.on_load)
+@rx.page(route="/", title="Just DNA Lite", on_load=UploadState.on_load)
 def index_page() -> rx.Component:
     """Main annotation page with two-panel run-centric layout."""
     return template(

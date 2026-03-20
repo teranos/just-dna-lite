@@ -19,8 +19,10 @@ os.environ["API_URL"] = api_url
 
 config = rx.Config(
     app_name="webui",
+    env_file="../.env",
     backend_port=backend_port,
     api_url=api_url,
+    vite_allowed_hosts=["lite.just-dna.life"],
     disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
     # Fomantic UI styling
     stylesheets=[
