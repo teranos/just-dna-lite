@@ -48,7 +48,7 @@ jobs:
           nix-store --export $(nix-store -qR $(nix path-info .#devShells.$(nix eval --impure --expr 'builtins.currentSystem')-default)) > /tmp/nix-cache/archive.nar || true
 
       - name: Install dependencies
-        run: nix develop --command bash -c "uv sync --dev"
+        run: nix develop --command bash -c "uv sync --all-packages --dev"
 
       - name: Check imports
         run: |
@@ -60,4 +60,4 @@ jobs:
           nix develop --command bash -c "uv run pipelines --help"
 
       - name: Run tests
-        run: nix develop --command bash -c "uv run pytest just-dna-pipelines/tests/ -x -q --timeout=120"
+        run: nix develop --command bash -c "uv run --package just-dna-pipelines pytest just-dna-pipelines/tests/ -x -q"
