@@ -26,38 +26,20 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
-      - name: Nix store cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/nix-cache
-          key: nix-${{ matrix.os }}-${{ hashFiles('flake.lock') }}
-          restore-keys: nix-${{ matrix.os }}-
-
-      - name: Import Nix cache
+      - name: Build, install, and test
         run: |
-          if [ -f /tmp/nix-cache/archive.nar ]; then
-            nix-store --import < /tmp/nix-cache/archive.nar || true
-          fi
+          nix develop --command bash -c '
+            set -euo pipefail
+            echo "--- uv sync ---"
+            uv sync --all-packages --dev
 
-      - name: Build dev shell
-        run: nix develop --command true
+            echo "--- import checks ---"
+            uv run python -c "import just_dna_pipelines; print(\"just_dna_pipelines OK\")"
+            uv run python -c "import webui; print(\"webui OK\")"
 
-      - name: Export Nix cache
-        run: |
-          mkdir -p /tmp/nix-cache
-          nix-store --export $(nix-store -qR $(nix path-info .#devShells.$(nix eval --impure --expr 'builtins.currentSystem')-default)) > /tmp/nix-cache/archive.nar || true
+            echo "--- CLI check ---"
+            uv run pipelines --help
 
-      - name: Install dependencies
-        run: nix develop --command bash -c "uv sync --all-packages --dev"
-
-      - name: Check imports
-        run: |
-          nix develop --command bash -c "uv run python -c \"import just_dna_pipelines; print('just_dna_pipelines OK')\""
-          nix develop --command bash -c "uv run python -c \"import webui; print('webui OK')\""
-
-      - name: Check CLI
-        run: |
-          nix develop --command bash -c "uv run pipelines --help"
-
-      - name: Run tests
-        run: nix develop --command bash -c "uv run --package just-dna-pipelines pytest just-dna-pipelines/tests/ -x -q"
+            echo "--- tests ---"
+            uv run --package just-dna-pipelines pytest just-dna-pipelines/tests/ -x -q
+          '
