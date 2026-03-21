@@ -41,6 +41,7 @@ from agno.tools.mcp import MCPTools
 from agno.utils.log import configure_agno_logging
 import agno.utils.log as _agno_log_module
 
+from just_dna_pipelines.agents.guardrails import check_output as _guardrails_check
 from just_dna_pipelines.module_registry import validate_module_spec
 
 load_dotenv()
@@ -718,6 +719,7 @@ async def run_agent_async(
     on_event: Optional[EventCallback] = None,
     run_log: Optional[RunLog] = None,
     current_version: int = 0,
+    guardrails: bool = True,
 ) -> str:
     """Run the solo module creator agent with agno event streaming.
 
@@ -732,6 +734,8 @@ async def run_agent_async(
             ``(event_type, label, detail, call_id)``.
         run_log: Optional RunLog to collect a persistent textual record of the run.
         current_version: Version currently in the editing slot (0 = new module).
+        guardrails: If True (default), run the output through graunde
+            policy checks when the binary is available on PATH.
 
     Returns:
         Agent response text (markdown).
@@ -801,7 +805,28 @@ async def run_agent_async(
                     content_chunks.append(event.content)
 
         await _emit("Agent finished. Processing results...")
-        return "".join(content_chunks)
+        output = "".join(content_chunks)
+
+        if guardrails:
+            correction = _guardrails_check(output)
+            if correction:
+                if run_log:
+                    run_log.log(f"Guardrail violation: {correction[:200]}")
+                await _emit("Policy violation detected — re-running agent...")
+                retry_message = (
+                    f"{message}\n\n---\n"
+                    f"Your previous response was flagged by a policy check:\n\n"
+                    f"{correction}\n\n"
+                    f"Please revise your response to address this issue."
+                )
+                retry_chunks: List[str] = []
+                async for event in agent.arun(retry_message, stream=True, stream_events=True, **kwargs):
+                    if event.event == RunEvent.run_content and event.content:
+                        retry_chunks.append(event.content)
+                output = "".join(retry_chunks)
+                await _emit("Retry completed")
+
+        return output
     finally:
         if restore_logging:
             restore_logging()
@@ -817,6 +842,7 @@ async def run_team_async(
     on_event: Optional[EventCallback] = None,
     run_log: Optional[RunLog] = None,
     current_version: int = 0,
+    guardrails: bool = True,
 ) -> str:
     """Run the module creator team with agno event streaming.
 
@@ -835,6 +861,8 @@ async def run_team_async(
             ``(event_type, label, detail, call_id)``.
         run_log: Optional RunLog to collect a persistent textual record of the run.
         current_version: Version currently in the editing slot (0 = new module).
+        guardrails: If True (default), run the output through graunde
+            policy checks when the binary is available on PATH.
 
     Returns:
         Team response text (markdown).
@@ -934,7 +962,28 @@ async def run_team_async(
                     await _emit(f"Last team run event: {event.event}")
 
         await _emit("Team finished. Processing results...")
-        return "".join(content_chunks)
+        output = "".join(content_chunks)
+
+        if guardrails:
+            correction = _guardrails_check(output)
+            if correction:
+                if run_log:
+                    run_log.log(f"Guardrail violation: {correction[:200]}")
+                await _emit("Policy violation detected — re-running team...")
+                retry_message = (
+                    f"{message}\n\n---\n"
+                    f"Your previous response was flagged by a policy check:\n\n"
+                    f"{correction}\n\n"
+                    f"Please revise your response to address this issue."
+                )
+                retry_chunks: List[str] = []
+                async for event in team.arun(retry_message, stream=True, stream_events=True, **kwargs):
+                    if event.event == TeamRunEvent.run_content and event.content:
+                        retry_chunks.append(event.content)
+                output = "".join(retry_chunks)
+                await _emit("Retry completed")
+
+        return output
     finally:
         if restore_logging:
             restore_logging()
