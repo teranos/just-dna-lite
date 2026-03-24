@@ -994,7 +994,7 @@ Key principles:
 
 - When writing READMEs or user-facing docs: put images at the top, place caveats after Quick Start, and keep intros concise while avoiding technical jargon (e.g., "VCF", "Polars", "DuckDB"). Move deep implementation details to `docs/`.
 - Write in natural, human prose avoiding AI-typical patterns (em-dashes, filler transitions, marketing voice). Never hallucinate documentation.
-- Don't overpromise unimplemented features (like 23andMe/microarray support).
+- Don't overpromise unimplemented features (like 23andMe/microarray support). Balance credibility with honesty: ROGEN results are planned/future work, not finished outcomes.
 - Update related documentation (AGENTS.md, DAGSTER_GUIDE.md) immediately whenever code is refactored.
 - For upstream PyPI dependencies (like `prs-ui`), try to fix bugs locally or provide copy-paste prompts for upstream fixes rather than patching locally.
 - Use fsspec-based access patterns instead of symlinks. Cache HuggingFace data in the project's own cache using fsspec/HfFileSystem, never use `snapshot_download`.
@@ -1004,6 +1004,9 @@ Key principles:
 - Output file names must reflect semantic content (e.g., `_ensembl_annotated.parquet`), not implementation details. Reports should be timestamped to avoid overwriting previous runs.
 - When fixing Reflex `dispatch is not a function` exceptions, remove the `.web` directory and restart the server to clear stale frontend caches.
 - When the user gives a minimal working example or pattern, wire it in directly instead of over-exploring alternatives.
+- Use global/inclusive framing in docs and UI: avoid EU-only language; users from any country should feel welcome. Reference EHDS as one example among international open health data initiatives.
+- When importing content from Notion into the repo, the repo copy becomes the source of truth. Use structured subfolders and an index document when the file count grows.
+- Ship git releases after substantive doc or legal changes. When merging PRs with README conflicts, preserve important lines from both branches.
 
 ## Learned Workspace Facts
 
@@ -1024,3 +1027,5 @@ Key principles:
 - Backend API port is auto-resolved at startup; never hardcode port 8000. Use `rx.config.get_config().api_url` or the `backend_api_url` state var for download/report URLs.
 - Long synchronous work in Reflex event handlers (e.g. `set_lazyframe` with large parquets) holds the state lock and freezes the UI. Use `run_in_executor` for heavy operations.
 - Reflex `rx.upload` wrapper is a real layout participant; CSS on the inner button alone is insufficient. Use `display: contents` on the upload wrapper to avoid phantom width.
+- Public genome example for demos: Anton Kulaga's VCF on Zenodo (record 18370498).
+- Nix flake (`flake.nix`) supports Apple Silicon Macs: `nix develop` provides correct Python, Node.js, and uv. Workflow: `nix develop` then `uv sync` then `uv run start`.
