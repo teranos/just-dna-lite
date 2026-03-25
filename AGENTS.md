@@ -62,9 +62,12 @@ This is the single source of truth for:
 
 **Modules are always auto-discovered** from the configured sources. The YAML only provides optional display overrides. Modules not listed in `module_metadata` get auto-generated defaults (titlecased name, generic icon, default color).
 
+**Read/write separation**: The repo-root `modules.yaml` is git-tracked and read-only (defaults). All runtime mutations (register/unregister custom modules) write to a working copy at `data/interim/modules.yaml` (gitignored). On first write the repo default is copied as seed. The loader checks working copy → repo root → package dir (first found wins).
+
 ### Key files
 
-- **`modules.yaml`**: Declares sources, Ensembl reference, quality filters, and optional metadata overrides
+- **`modules.yaml`** (project root): Git-tracked defaults — sources, Ensembl reference, quality filters, metadata overrides
+- **`data/interim/modules.yaml`**: Mutable working copy (gitignored) — written by register/unregister
 - **`module_config.py`**: Pydantic models (`Source`, `ModuleMetadata`, `EnsemblSource`, `ModulesConfig`), YAML loader, helper functions (`get_module_meta()`, `build_module_metadata_dict()`, etc.)
 - **`annotation/hf_modules.py`**: Discovery logic — scans sources via fsspec, builds `MODULE_INFOS` and `DISCOVERED_MODULES`
 
@@ -90,6 +93,7 @@ Each source can be a single module or a collection:
 
 ### Important patterns
 
+- **Never write to repo-root `modules.yaml`** — use `get_config_path()` which returns the working copy at `data/interim/modules.yaml`
 - **Never hardcode module lists or metadata in Python files** — always use `get_module_meta()` or `build_module_metadata_dict()` from `module_config`
 - **Never hardcode HF repo URLs** — use `DEFAULT_REPOS` or `MODULES_CONFIG.sources` from `module_config`
 - **Never hardcode Ensembl repo ID** — `EnsemblAnnotationsConfig.repo_id` defaults to `MODULES_CONFIG.ensembl_source.repo_id`
@@ -1024,7 +1028,7 @@ Key principles:
 - `module_spec.yaml` structure: module name lives under `module.name`, not a top-level `name` key.
 - AI-generated module logos (via NanoBanana/Gemini) produce ~60% whitespace; `_autocrop_whitespace()` in `module_creator.py` handles this with tolerance-based near-white detection. Prompts must request edge-to-edge filling.
 - Always load `.env` via `load_dotenv()` or equivalent before using `os.getenv` for config paths (`JUST_DNA_PIPELINES_CACHE_DIR`, `JUST_DNA_PIPELINES_OUTPUT_DIR`, etc.).
-- Backend API port is auto-resolved at startup; never hardcode port 8000. Use `rx.config.get_config().api_url` or the `backend_api_url` state var for download/report URLs.
+- Backend API port is auto-resolved at startup; never hardcode port 8000. Custom API routes (via `api_transformer`) are only served by the Reflex **backend**; the frontend dev server does NOT proxy arbitrary `/api/...` paths. `rxconfig.py` persists the backend URL in `os.environ["API_URL"]`, and `backend_api_url` reads it so the browser constructs direct URLs to the backend (e.g. `http://localhost:8042/api/report/...`). Never return `""` from `backend_api_url` — relative URLs 404 on the frontend.
 - Long synchronous work in Reflex event handlers (e.g. `set_lazyframe` with large parquets) holds the state lock and freezes the UI. Use `run_in_executor` for heavy operations.
 - Reflex `rx.upload` wrapper is a real layout participant; CSS on the inner button alone is insufficient. Use `display: contents` on the upload wrapper to avoid phantom width.
 - Public genome example for demos: Anton Kulaga's VCF on Zenodo (record 18370498).

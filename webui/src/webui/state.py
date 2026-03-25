@@ -23,7 +23,7 @@ from just_dna_pipelines.annotation.assets import user_vcf_partitions
 from just_dna_pipelines.annotation.definitions import defs
 from just_dna_pipelines.annotation.hf_logic import prepare_vcf_for_module_annotation
 from just_dna_pipelines.annotation.hf_modules import DISCOVERED_MODULES, MODULE_INFOS, HF_DEFAULT_REPOS
-from just_dna_pipelines.annotation.resources import get_user_output_dir, get_user_input_dir
+from just_dna_pipelines.annotation.resources import get_user_output_dir, get_user_input_dir, get_generated_modules_dir
 from just_dna_pipelines.module_config import build_module_metadata_dict, _load_config
 from just_dna_pipelines.module_registry import (
     CUSTOM_MODULES_DIR,
@@ -36,8 +36,7 @@ from reflex_mui_datagrid import LazyFrameGridMixin, extract_vcf_descriptions, sc
 
 logger = logging.getLogger(__name__)
 
-_WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
-GENERATED_MODULES_DIR: Path = _WORKSPACE_ROOT / "data" / "output" / "generated_modules"
+GENERATED_MODULES_DIR: Path = get_generated_modules_dir()
 
 
 # Module metadata with titles, descriptions, and icons
@@ -1528,15 +1527,22 @@ class UploadState(LazyFrameGridMixin, rx.State):
         """Check if there are any custom fields."""
         return len(self.current_custom_fields) > 0
 
-    @rx.var
+    @rx.var(cache=True)
     def backend_api_url(self) -> str:
         """Get the backend API URL prefix for downloads/reports.
-        
-        Returns empty string so URLs are relative (e.g. /api/report/...).
-        The browser resolves them against the current origin, which works
-        both on localhost and behind a reverse proxy in production.
+
+        Custom API routes (via api_transformer) are served by the Reflex
+        backend only.  The frontend dev server does NOT proxy arbitrary
+        ``/api/...`` paths — it only forwards Reflex-internal routes
+        (``/_event``, ``/_upload``, etc.).  Relative URLs therefore 404
+        on the frontend.
+
+        ``rxconfig.py`` auto-discovers a free backend port and persists
+        the full URL in ``os.environ["API_URL"]``.  We read it here so
+        the browser constructs direct URLs to the backend
+        (e.g. ``http://localhost:8042/api/report/...``).
         """
-        return ""
+        return os.environ.get("API_URL", "").rstrip("/")
 
     @rx.var
     def current_subject_id(self) -> str:
@@ -3283,16 +3289,13 @@ class AgentState(rx.State):
                     f"Module **{name}** registered successfully! "
                     f"({variant_count} variants) — now available for annotation.",
                 )
+                upload_state = await self.get_state(UploadState)
+                upload_state._refresh_module_ui_state()
             else:
                 self._add_chat_message(
                     "agent",
                     f"Registration failed: {'; '.join(result.errors[:3])}",
                 )
-
-        if result.success:
-            upload_state = await self.get_state(UploadState)
-            async with upload_state:
-                upload_state._refresh_module_ui_state()
 
     def clear_slot(self) -> None:
         """Empty the editing slot."""
