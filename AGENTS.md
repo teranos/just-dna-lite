@@ -1002,25 +1002,20 @@ Key principles:
 - Update related documentation (AGENTS.md, DAGSTER_GUIDE.md) immediately whenever code is refactored.
 - For upstream PyPI dependencies (like `prs-ui`), try to fix bugs locally or provide copy-paste prompts for upstream fixes rather than patching locally.
 - Use fsspec-based access patterns instead of symlinks. Cache HuggingFace data in the project's own cache using fsspec/HfFileSystem, never use `snapshot_download`.
-- Avoid `subprocess` complexity for CLI commands; use uv workspace `[project.scripts]` instead.
-- Automatically create missing directories in code rather than expecting users to `mkdir`.
-- The tool does not calculate heritability; advise users to look up heritability independently and explain low penetrance (risk variants don't guarantee trait manifestation).
+- Avoid `subprocess` complexity for CLI commands; use uv workspace `[project.scripts]` instead. Automatically create missing directories in code rather than expecting users to `mkdir`.
 - Output file names must reflect semantic content (e.g., `_ensembl_annotated.parquet`), not implementation details. Reports should be timestamped to avoid overwriting previous runs.
-- When fixing Reflex `dispatch is not a function` exceptions, remove the `.web` directory and restart the server to clear stale frontend caches.
 - When the user gives a minimal working example or pattern, wire it in directly instead of over-exploring alternatives.
 - Use global/inclusive framing in docs and UI: avoid EU-only language; users from any country should feel welcome. Reference EHDS as one example among international open health data initiatives.
 - When importing content from Notion into the repo, the repo copy becomes the source of truth. Use structured subfolders and an index document when the file count grows.
-- Ship git releases after substantive doc or legal changes. When merging PRs with README conflicts, preserve important lines from both branches.
+- When describing the platform in papers/docs, frame it as a bioinformatics tool that *joins* VCF data against module databases to add annotations. Never imply the VCF already contains annotations or that the tool makes gene-disease inferences.
 
 ## Learned Workspace Facts
 
-- This is a multi-root uv workspace: `just-dna-lite` (main) and `just-prs` (read-only reference). Never modify files in `just-prs`.
+- This is a multi-root uv workspace: `just-dna-lite` (main) and `just-prs` (read-only reference). Never modify files in `just-prs`. `just-prs` was developed specifically for Just-DNA-Lite but released as a standalone library. Related repos: `just-dna-lite`, `just-prs`, `reflex-mui-datagrid`, `just-biomarkers`, `dna-seq`, `prepare-annotations`.
 - The AI Module Creator uses the Agno agentic framework, which allows configuring OpenAI API-compatible local models (e.g., Ollama or vLLM) for complete privacy.
 - Images for README live in `images/` at the project root. Use `<img>` tags (not markdown syntax) for images inside HTML `<div>` blocks.
 - `PRSComputeStateMixin` provides `prs_results` but no count var; use `PRSState.prs_results.length()` for counts. When overriding `compute_selected_prs`, always delegate to the mixin first.
-- The `prs_section(PRSState)` component from prs-ui is the correct single entry point for PRS UI.
 - VCF normalization renames `start` to `pos` (or vice versa); PRS computation must account for which column name the normalized parquet actually uses.
-- `uv lock -U` updates lockfile versions but not `pyproject.toml` specifiers. Use it to pull new upstream versions for transitive dependencies (e.g., when `pgenlib` became optional in `just-prs`).
 - Only GRCh38 VCF files are fully supported (GRCh37, T2T, and microarray are planned).
 - Ensembl annotation assets must depend on `user_vcf_normalized`, not raw VCFs. The `ensembl_source.repo_id` in `modules.yaml` controls the Ensembl HF dataset.
 - `rx.icon()` (Lucide) icons often fail in this Reflex setup; use `fomantic_icon()` from `webui.components.layout` instead. Fomantic icon names are space-separated (e.g. `arrow up`), not hyphenated Lucide-style.
@@ -1033,3 +1028,6 @@ Key principles:
 - Reflex `rx.upload` wrapper is a real layout participant; CSS on the inner button alone is insufficient. Use `display: contents` on the upload wrapper to avoid phantom width.
 - Public genome example for demos: Anton Kulaga's VCF on Zenodo (record 18370498).
 - Nix flake (`flake.nix`) supports Apple Silicon Macs: `nix develop` provides correct Python, Node.js, and uv. Workflow: `nix develop` then `uv sync` then `uv run start`.
+- Only 5 expert-curated annotation modules exist on HuggingFace (`just-dna-seq/annotators`): `coronary`, `lipidmetabolism`, `longevitymap`, `superhuman`, `vo2max`. PharmGKB (drugs) has NOT been migrated from Generation 1.
+- HuggingFace `just-dna-seq` org hosts 6 datasets (`annotators`, `ensembl_variations`, `clinvar`, `pgs-catalog`, `prs-percentiles`, `polygenic_risk_scores`) and 1 model (`GenNet`).
+- The first preprint was rejected by bioRxiv ("inference drawn between gene(s) and disease(s)") and medRxiv; published on arXiv instead. To avoid repeat rejection, frame the manuscript as a bioinformatics methods/software paper, not a genomic medicine paper.
