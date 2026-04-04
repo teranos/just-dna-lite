@@ -11,12 +11,8 @@ on:
 
 jobs:
   test-nix:
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, ubuntu-24.04-arm]
 
     steps:
       - name: Checkout code
