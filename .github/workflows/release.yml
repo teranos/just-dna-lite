@@ -1,0 +1,215 @@
+name: Release Installers
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (e.g. 0.2.1)"
+        required: true
+
+env:
+  UV_VERSION: "0.7.8"
+
+jobs:
+  # ── Windows Installer (.exe via Inno Setup) ──────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            # Strip leading 'v' from tag
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download uv for Windows
+        shell: pwsh
+        run: |
+          $uvUrl = "https://github.com/astral-sh/uv/releases/download/${{ env.UV_VERSION }}/uv-x86_64-pc-windows-msvc.zip"
+          Invoke-WebRequest -Uri $uvUrl -OutFile uv.zip
+          Expand-Archive -Path uv.zip -DestinationPath uv-extracted -Force
+          # The archive may contain a nested directory or flat files
+          $uvExe = Get-ChildItem -Path uv-extracted -Recurse -Filter "uv.exe" | Select-Object -First 1
+          Copy-Item $uvExe.FullName windows/uv.exe
+
+      - name: Generate icon
+        shell: pwsh
+        run: |
+          windows/uv.exe run --with Pillow python windows/generate_icon.py
+
+      - name: Build installer with Inno Setup
+        shell: pwsh
+        run: |
+          $env:APP_VERSION = "${{ steps.version.outputs.version }}"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAPP_VERSION="${{ steps.version.outputs.version }}" windows\installer.iss
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/JustDNALite-${{ steps.version.outputs.version }}-Setup.exe
+
+  # ── macOS DMG (Apple Silicon) ────────────────────────────────────────────
+  build-macos-arm:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download uv for macOS ARM
+        run: |
+          mkdir -p /tmp/uv-extract
+          curl -fsSL "https://github.com/astral-sh/uv/releases/download/${{ env.UV_VERSION }}/uv-aarch64-apple-darwin.tar.gz" \
+            | tar xz -C /tmp/uv-extract
+          find /tmp/uv-extract -name "uv" -type f | head -1 | xargs -I{} cp {} /tmp/uv-binary
+          chmod +x /tmp/uv-binary
+
+      - name: Generate icon
+        run: |
+          chmod +x macos/generate_icon.sh
+          ./macos/generate_icon.sh
+
+      - name: Build .app bundle
+        run: |
+          chmod +x macos/build_app.sh
+          ./macos/build_app.sh /tmp/uv-binary "${{ steps.version.outputs.version }}"
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Build DMG
+        run: |
+          chmod +x macos/build_dmg.sh
+          ./macos/build_dmg.sh "${{ steps.version.outputs.version }}" arm64
+
+      - name: Upload macOS ARM DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-dmg
+          path: dist/JustDNALite-${{ steps.version.outputs.version }}-arm64.dmg
+
+  # ── macOS DMG (Intel x64) ───────────────────────────────────────────────
+  build-macos-x64:
+    runs-on: macos-13
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download uv for macOS x64
+        run: |
+          mkdir -p /tmp/uv-extract
+          curl -fsSL "https://github.com/astral-sh/uv/releases/download/${{ env.UV_VERSION }}/uv-x86_64-apple-darwin.tar.gz" \
+            | tar xz -C /tmp/uv-extract
+          find /tmp/uv-extract -name "uv" -type f | head -1 | xargs -I{} cp {} /tmp/uv-binary
+          chmod +x /tmp/uv-binary
+
+      - name: Generate icon
+        run: |
+          chmod +x macos/generate_icon.sh
+          ./macos/generate_icon.sh
+
+      - name: Build .app bundle
+        run: |
+          chmod +x macos/build_app.sh
+          ./macos/build_app.sh /tmp/uv-binary "${{ steps.version.outputs.version }}"
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Build DMG
+        run: |
+          chmod +x macos/build_dmg.sh
+          ./macos/build_dmg.sh "${{ steps.version.outputs.version }}" x86_64
+
+      - name: Upload macOS x64 DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64-dmg
+          path: dist/JustDNALite-${{ steps.version.outputs.version }}-x64.dmg
+
+  # ── Create GitHub Release ────────────────────────────────────────────────
+  release:
+    needs: [build-windows, build-macos-arm, build-macos-x64]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Determine version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Just DNA Lite v${{ steps.version.outputs.version }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/windows-installer/*.exe
+            artifacts/macos-arm64-dmg/*.dmg
+            artifacts/macos-x64-dmg/*.dmg
+          body: |
+            ## Installation
+
+            **Windows:** Download `JustDNALite-${{ steps.version.outputs.version }}-Setup.exe`, run the installer, then launch from the Start Menu or Desktop shortcut.
+
+            **macOS (Apple Silicon M1-M4):** Download `JustDNALite-${{ steps.version.outputs.version }}-arm64.dmg`, open it, and drag Just DNA Lite to your Applications folder.
+
+            **macOS (Intel):** Download `JustDNALite-${{ steps.version.outputs.version }}-x64.dmg`, open it, and drag Just DNA Lite to your Applications folder.
+
+            > **First launch** takes 1-3 minutes (downloads Python and dependencies). Subsequent launches are fast.
+
+            > **macOS note:** Since the app is not yet notarized, you may need to right-click the app and select "Open" on first launch to bypass Gatekeeper.
+
+            For Linux or advanced usage, see the [README](https://github.com/dna-seq/just-dna-lite#quick-start).

@@ -87,6 +87,24 @@ If you live in Romania, you should follow the **[ROGEN (Romanian Genomics) proje
 **Don't have your genome sequenced yet?**
 You can use any public genome to try out the tool. For example, some of our authors have open-sourced their genomes — you can download [Anton Kulaga's genome here](https://zenodo.org/records/18370498) and see what you discover! You can also find other public genomes on platforms like [Open Humans](https://www.openhumans.org/).
 
+### Download the installer (Windows / macOS)
+
+No terminal required. Go to the [latest release](https://github.com/dna-seq/just-dna-lite/releases/latest) and download the installer for your operating system:
+
+| Platform | File to download |
+|----------|-----------------|
+| **Windows** (64-bit) | `JustDNALite-{version}-Setup.exe` |
+| **macOS** (Apple Silicon M1-M4) | `JustDNALite-{version}-arm64.dmg` |
+| **macOS** (Intel) | `JustDNALite-{version}-x64.dmg` |
+
+**Windows:** Run the installer, follow the wizard, then launch from the Start Menu or Desktop shortcut.
+
+**macOS:** Open the `.dmg`, drag Just DNA Lite to your Applications folder, then double-click to launch. On first launch, you may need to right-click the app and select "Open" to bypass Gatekeeper (the app is not yet notarized).
+
+The first launch takes 1-3 minutes (it downloads Python and dependencies automatically). After that, startup is fast. Your browser will open to `http://localhost:3000` where you can upload your VCF and start exploring.
+
+> **Linux users:** Use the [Install from source](#install-from-source-python) or [Container](#run-with-podman-or-docker-no-python-required) methods below.
+
 ### Install from source (Python)
 
 If you're comfortable with a terminal, this is the fastest way to get started. Open a terminal (Terminal on macOS, PowerShell on Windows, any terminal on Linux) and run the commands below. You'll need [git](https://git-scm.com/downloads) installed.

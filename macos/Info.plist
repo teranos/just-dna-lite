@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Just DNA Lite</string>
+    <key>CFBundleDisplayName</key>
+    <string>Just DNA Lite</string>
+    <key>CFBundleIdentifier</key>
+    <string>io.github.dna-seq.just-dna-lite</string>
+    <key>CFBundleVersion</key>
+    <string>APP_VERSION</string>
+    <key>CFBundleShortVersionString</key>
+    <string>APP_VERSION</string>
+    <key>CFBundleExecutable</key>
+    <string>just-dna-lite</string>
+    <key>CFBundleIconFile</key>
+    <string>icon</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.medical</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright (c) 2024-2026 dna-seq contributors. AGPL v3.</string>
+</dict>
+</plist>
