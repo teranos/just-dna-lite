@@ -50,6 +50,12 @@ Both modes output a deterministic DSL specification (`module_spec.yaml` + `varia
 
 Even without a specific module, you can browse your full variant table with sorting, filtering, and search. Cross-reference against [Ensembl](https://www.ensembl.org/) for clinical significance labels. Export everything as Parquet for your own analysis in Python, R, or any tool that reads Arrow.
 
+### VCF export
+
+Annotation results are stored as Parquet for speed and columnar tooling, but you can also get **standard VCF** files. The pipeline materializes a `user_vcf_exports` asset: one VCF per selected HF module (annotations in INFO), an optional Ensembl-annotated VCF when you run Ensembl, and a **combined** VCF that merges module (and Ensembl) fields into INFO. Exports land under your sample’s `vcf_exports/` folder.
+
+In the web app, open **Outputs** → **Data Files** and use **Export VCF** to run the export job again (for example after new modules or a stale run). While the job runs, **View in Dagster** opens the live run in the pipeline UI—exports that join large Ensembl tables can take several minutes.
+
 ## Creating a Module with the AI Team
 
 Got a research paper about a trait that interests you? Upload the PDF, describe what you want, and the AI team does the rest — querying EuropePMC, Open Targets, and BioRxiv, extracting variants with per-genotype weights, validating the spec, and writing all module files in one uninterrupted run. No bioinformatics knowledge needed.
@@ -79,7 +85,36 @@ If you want to sequence your own genome, there are several commercial providers.
 If you live in Romania, you should follow the **[ROGEN (Romanian Genomics) project](https://rogen.umfcd.ro/)**. It is a major national initiative sequencing 5,000 individuals to create a genomic map of the population, and you might be able to get recruited to have your genome sequenced for free.
 
 **Don't have your genome sequenced yet?**
-You can use any public genome to try out the tool. For example, some of our authors have open-sourced their genomes — you can download [Anton Kulaga's genome here](https://zenodo.org/records/18370498) and see what you discover! You can also find other public genomes on platforms like [Open Humans](https://www.openhumans.org/).
+You can use any public genome to try out the tool. Some of our authors have voluntarily open-sourced their genomes:
+
+- **Anton Kulaga** (CC-Zero): [zenodo.org/records/18370498](https://zenodo.org/records/18370498)
+  ```
+  https://zenodo.org/records/18370498
+  ```
+- **Livia Zaharia** (CC-BY-4.0): [zenodo.org/records/19487816](https://zenodo.org/records/19487816)
+  ```
+  https://zenodo.org/records/19487816
+  ```
+
+You can paste these URLs directly into the "Import from Zenodo" field in the app, or download the VCF file and upload it manually. You can also find other public genomes on platforms like [Open Humans](https://www.openhumans.org/).
+
+### Download the installer (Windows / macOS)
+
+No terminal required. Go to the [latest release](https://github.com/dna-seq/just-dna-lite/releases/latest) and download the installer for your operating system:
+
+| Platform | File to download |
+|----------|-----------------|
+| **Windows** (64-bit) | `JustDNALite-{version}-Setup.exe` |
+| **macOS** (Apple Silicon M1-M4) | `JustDNALite-{version}-arm64.dmg` |
+| **macOS** (Intel) | `JustDNALite-{version}-x64.dmg` |
+
+**Windows:** Run the installer, follow the wizard, then launch from the Start Menu or Desktop shortcut.
+
+**macOS:** Open the `.dmg`, drag Just DNA Lite to your Applications folder, then double-click to launch. On first launch, you may need to right-click the app and select "Open" to bypass Gatekeeper (the app is not yet notarized).
+
+The first launch takes 1-3 minutes (it downloads Python and dependencies automatically). After that, startup is fast. Your browser will open to `http://localhost:3000` where you can upload your VCF and start exploring.
+
+> **Linux users:** Use the [Install from source](#install-from-source-python) or [Container](#run-with-podman-or-docker-no-python-required) methods below.
 
 ### Install from source (Python)
 
@@ -229,7 +264,7 @@ You upload a VCF through the web interface. The pipeline normalizes it (quality 
 
 For Polygenic Risk Scores, the tool pulls scoring files from the PGS Catalog, computes your score, and ranks it against five 1000 Genomes superpopulations (European, African, East Asian, South Asian, American).
 
-All outputs are Parquet files. Open them in Polars, Pandas, DuckDB, R, or anything that speaks Arrow.
+Primary outputs are **Parquet** files—open them in Polars, Pandas, DuckDB, R, or anything that speaks Arrow. **VCF export** (see above) is available when you need a classic variant file with annotations in INFO.
 
 ## What the numbers actually mean
 

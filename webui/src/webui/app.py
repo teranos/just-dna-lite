@@ -17,6 +17,7 @@ from webui.pages.index import index_page
 from webui.pages.analysis import analysis_page
 from webui.pages.annotate import annotate_page
 from webui.pages.modules import modules_page
+from webui.pages.faq import faq_page
 
 # Load environment variables from .env file (searching up to root)
 load_env()
@@ -129,6 +130,35 @@ async def download_output_file(user_id: str, sample_name: str, filename: str) ->
     if not file_path.is_file():
         raise HTTPException(status_code=400, detail=f"Path is not a file: {file_path}")
     
+    return FileResponse(
+        path=str(file_path),
+        filename=filename,
+        media_type="application/octet-stream",
+    )
+
+
+@api.get("/api/download-vcf/{user_id}/{sample_name}/{filename}")
+async def download_vcf_export(user_id: str, sample_name: str, filename: str) -> FileResponse:
+    """Download an exported VCF file from the user's vcf_exports directory.
+
+    Path: /api/download-vcf/{user_id}/{sample_name}/{filename}
+    Example: /api/download-vcf/anonymous/sample1/longevitymap_annotated.vcf.gz
+    """
+    if ".." in user_id or ".." in sample_name or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid path components")
+
+    allowed_extensions = (".vcf", ".vcf.gz", ".vcf.bgz")
+    if not any(filename.endswith(ext) for ext in allowed_extensions):
+        raise HTTPException(status_code=400, detail="Only VCF files can be downloaded")
+
+    file_path = get_user_output_dir() / user_id / sample_name / "vcf_exports" / filename
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+
+    if not file_path.is_file():
+        raise HTTPException(status_code=400, detail="Path is not a file")
+
     return FileResponse(
         path=str(file_path),
         filename=filename,
@@ -282,3 +312,4 @@ app.add_page(index_page)
 app.add_page(analysis_page)
 app.add_page(annotate_page)
 app.add_page(modules_page)
+app.add_page(faq_page)
